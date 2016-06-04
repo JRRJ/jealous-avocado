@@ -60,10 +60,10 @@
 	
 	var db = __webpack_require__(8);
 	var User = __webpack_require__(11);
-	var Topic = __webpack_require__(14);
+	var Topic = __webpack_require__(12);
 	var Article = __webpack_require__(13);
 	
-	var alchemyAPI = __webpack_require__(12);
+	var alchemyAPI = __webpack_require__(14);
 	
 	app.use(bodyParser.urlencoded({
 	  extended: true
@@ -110,7 +110,7 @@
 	        article.destroy();
 	      });
 	    });
-	    console.log('deleting articles', req.query.topic);
+	    console.log('querying alchemyAPI for articles', req.query.topic);
 	    request.get(alchemyAPI.getNewsURL(req.query.topic)).then(function (d) {
 	      d = JSON.parse(d);
 	      d.result.docs.forEach(function (doc) {
@@ -127,7 +127,7 @@
 	  var getArticles = function getArticles(topicId) {
 	    Article.fetchAll({ topicId: topicId }).then(function (articles) {
 	      articles.forEach(function (article) {
-	        console.log(article.get('url'), article.get('created_at'));
+	        //console.log(article.get('url'), article.get('created_at'));
 	        allURLS.push(article.get('url'));
 	      });
 	      res.json(allURLS);
@@ -138,7 +138,7 @@
 	  var checkArticleAge = function checkArticleAge(topicId) {
 	    new Article({ topicId: topicId }).fetch().then(function (article) {
 	      if (article) {
-	        console.log('oldest article', article.get('created_at'));
+	        //console.log('oldest article', article.get('created_at'));
 	        if (new Date() - Date.parse(article.get('created_at')) > MAX_TIME) {
 	          //time to update the database with alchemyAPI
 	          refreshArticles(topicId);
@@ -157,7 +157,7 @@
 	  new Topic({ name: req.query.topic }).fetch().then(function (topic) {
 	    if (!topic) {
 	      var reqTopic = new Topic({ name: req.query.topic });
-	      reqTopic.save().fetch(function (topic) {
+	      reqTopic.save().then(function (topic) {
 	        checkArticleAge(topic.get('id'));
 	      });
 	    } else {
@@ -374,41 +374,6 @@
 
 /***/ },
 /* 12 */
-/***/ function(module, exports) {
-
-	'use strict';
-	
-	module.exports = {
-	  API_KEY: '7899c81a8b05382d7102fd6a6c320f28954b8986',
-	  getNewsURL: function getNewsURL(topic) {
-	    return 'https://gateway-a.watsonplatform.net/calls/data/GetNews?outputMode=json&start=now-1d&end=now&count=20&apikey=' + module.exports.API_KEY + '&return=enriched.url.url&q.enriched.url.concepts.concept.text=' + topic;
-	  },
-	
-	  getTextURL: function getTextURL(link) {
-	    return 'http://gateway-a.watsonplatform.net/calls/url/URLGetText?apikey=' + module.exports.API_KEY + '&outputMode=json&url=' + link;
-	  }
-	};
-
-/***/ },
-/* 13 */
-/***/ function(module, exports, __webpack_require__) {
-
-	'use strict';
-	
-	var db = __webpack_require__(8);
-	
-	var Article = db.Model.extend({
-	  tableName: 'articles',
-	  hasTimestamps: true,
-	  topic: function topic() {
-	    return this.belongsTo(Topic);
-	  }
-	});
-	
-	module.exports = Article;
-
-/***/ },
-/* 14 */
 /***/ function(module, exports, __webpack_require__) {
 
 	'use strict';
@@ -430,6 +395,41 @@
 	});
 	
 	module.exports = Topic;
+
+/***/ },
+/* 13 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var db = __webpack_require__(8);
+	
+	var Article = db.Model.extend({
+	  tableName: 'articles',
+	  hasTimestamps: true,
+	  topic: function topic() {
+	    return this.belongsTo(Topic);
+	  }
+	});
+	
+	module.exports = Article;
+
+/***/ },
+/* 14 */
+/***/ function(module, exports) {
+
+	'use strict';
+	
+	module.exports = {
+	  API_KEY: '7899c81a8b05382d7102fd6a6c320f28954b8986',
+	  getNewsURL: function getNewsURL(topic) {
+	    return 'https://gateway-a.watsonplatform.net/calls/data/GetNews?outputMode=json&start=now-1d&end=now&count=20&apikey=' + module.exports.API_KEY + '&return=enriched.url.url&q.enriched.url.concepts.concept.text=' + topic;
+	  },
+	
+	  getTextURL: function getTextURL(link) {
+	    return 'http://gateway-a.watsonplatform.net/calls/url/URLGetText?apikey=' + module.exports.API_KEY + '&outputMode=json&url=' + link;
+	  }
+	};
 
 /***/ }
 /******/ ]);

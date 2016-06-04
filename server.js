@@ -65,7 +65,7 @@ app.get('/getArticles', (req, res) => {
         article.destroy();
       });
     });
-    console.log('deleting articles', req.query.topic);
+    console.log('querying alchemyAPI for articles', req.query.topic);
     request.get(alchemyAPI.getNewsURL(req.query.topic))
     .then(d => {
       d = JSON.parse(d);
@@ -83,7 +83,7 @@ app.get('/getArticles', (req, res) => {
   var getArticles = function(topicId) {
     Article.fetchAll({topicId: topicId}).then(function(articles){
       articles.forEach(function(article){
-        console.log(article.get('url'), article.get('created_at'));
+        //console.log(article.get('url'), article.get('created_at'));
         allURLS.push(article.get('url'));
       });
       res.json(allURLS);
@@ -94,7 +94,7 @@ app.get('/getArticles', (req, res) => {
   var checkArticleAge = function(topicId) {
     new Article({topicId: topicId}).fetch().then(function(article){
       if(article){
-        console.log('oldest article', article.get('created_at'));
+        //console.log('oldest article', article.get('created_at'));
         if(new Date - Date.parse(article.get('created_at')) > MAX_TIME) {
           //time to update the database with alchemyAPI
           refreshArticles(topicId);
@@ -115,7 +115,7 @@ app.get('/getArticles', (req, res) => {
     .then(function(topic) {
       if (!topic) {
         var reqTopic = new Topic({name:req.query.topic})
-        reqTopic.save().fetch(function(topic){
+        reqTopic.save().then(function(topic){
           checkArticleAge(topic.get('id'));
         });
       } else {
