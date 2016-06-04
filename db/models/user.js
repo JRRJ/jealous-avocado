@@ -2,6 +2,7 @@ var db = require('../config');
 
 var User = db.Model.extend({
   tableName: 'users',
+  hasTimestamps: true,
   streams: function() {
     return this.hasMany(Stream);
   },

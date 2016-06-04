@@ -60,6 +60,8 @@
 	
 	var db = __webpack_require__(8);
 	var User = __webpack_require__(11);
+	var Topic = __webpack_require__(14);
+	var Article = __webpack_require__(13);
 	
 	var alchemyAPI = __webpack_require__(12);
 	
@@ -98,19 +100,70 @@
 	});
 	
 	app.get('/getArticles', function (req, res) {
+	  var MAX_TIME = 86400000; //Longest time to keep articles in db.  (One day = 86400000ms)
 	  var allURLS = [];
 	
-	  //only do a request if necessary -- if there are cached articles, then show those first
-	  request.get(alchemyAPI.getNewsURL(req.query.topic)).then(function (d) {
-	    /*
-	    d = JSON.parse(d);
-	    d.result.docs.forEach(doc => {
-	      allURLS.push(doc.source.enriched.url.url);
+	  //only do an alchemyAPI request if necessary -- if there are cached articles, then show those first
+	  var refreshArticles = function refreshArticles(topicId) {
+	    Article.fetchAll({ topicId: topicId }).then(function (articles) {
+	      articles.forEach(function (article) {
+	        article.destroy();
+	      });
 	    });
-	    */
-	  });
+	    console.log('deleting articles', req.query.topic);
+	    request.get(alchemyAPI.getNewsURL(req.query.topic)).then(function (d) {
+	      d = JSON.parse(d);
+	      d.result.docs.forEach(function (doc) {
+	        var newArticle = new Article({
+	          url: doc.source.enriched.url.url,
+	          topicId: 1
+	        }).save();
+	      });
+	      getArticles(topicId);
+	    });
+	  };
 	
-	  res.end();
+	  //get the articles from the db
+	  var getArticles = function getArticles(topicId) {
+	    Article.fetchAll({ topicId: topicId }).then(function (articles) {
+	      articles.forEach(function (article) {
+	        console.log(article.get('url'), article.get('created_at'));
+	        allURLS.push(article.get('url'));
+	      });
+	      res.json(allURLS);
+	    });
+	  };
+	
+	  //2. Are there any articles in the db? How recently were they added?
+	  var checkArticleAge = function checkArticleAge(topicId) {
+	    new Article({ topicId: topicId }).fetch().then(function (article) {
+	      if (article) {
+	        console.log('oldest article', article.get('created_at'));
+	        if (new Date() - Date.parse(article.get('created_at')) > MAX_TIME) {
+	          //time to update the database with alchemyAPI
+	          refreshArticles(topicId);
+	        } else {
+	          //use articles in database
+	          getArticles(topicId);
+	        }
+	      } else {
+	        //need to populate the database with articles for this topic.
+	        refreshArticles(topicId);
+	      }
+	    });
+	  };
+	
+	  //1. does this topic exist in the topics table?
+	  new Topic({ name: req.query.topic }).fetch().then(function (topic) {
+	    if (!topic) {
+	      var reqTopic = new Topic({ name: req.query.topic });
+	      reqTopic.save().fetch(function (topic) {
+	        checkArticleAge(topic.get('id'));
+	      });
+	    } else {
+	      checkArticleAge(topic.get('id'));
+	    }
+	  });
 	});
 	
 	app.get('*', function (req, res) {
@@ -181,9 +234,7 @@
 	  connection: {
 	    host: '127.0.0.1',
 	    user: 'root',
-	    database: 'rep',
-	    charset: 'utf8',
-	    password: 'kk'
+	    database: 'rep'
 	  }
 	});
 	
@@ -244,6 +295,20 @@
 	  }
 	});
 	
+	db.knex.schema.hasTable('articles').then(function (exists) {
+	  if (!exists) {
+	    db.knex.schema.createTable('articles', function (article) {
+	      article.increments('id').primary();
+	      //article.string('title', 255);
+	      article.string('url', 1024).unique();
+	      article.integer('topicId');
+	      article.timestamps();
+	    }).then(function (table) {
+	      console.log('Created Table', table);
+	    });
+	  }
+	});
+	
 	db.knex.schema.hasTable('userFavs').then(function (exists) {
 	  if (!exists) {
 	    db.knex.schema.createTable('userFavs', function (userFav) {
@@ -294,6 +359,7 @@
 	
 	var User = db.Model.extend({
 	  tableName: 'users',
+	  hasTimestamps: true,
 	  streams: function streams() {
 	    return this.hasMany(Stream);
 	  },
@@ -313,15 +379,57 @@
 	'use strict';
 	
 	module.exports = {
-	  KEY: '5271f6ac77beb97a142fe534297b65aaebd9ed5a',
+	  API_KEY: '7899c81a8b05382d7102fd6a6c320f28954b8986',
 	  getNewsURL: function getNewsURL(topic) {
-	    return 'https://gateway-a.watsonplatform.net/calls/data/GetNews?outputMode=json&start=now-1d&end=now&count=2&apikey=' + module.exports.KEY + '&return=enriched.url.url&q.enriched.url.concepts.concept.text=' + topic;
+	    return 'https://gateway-a.watsonplatform.net/calls/data/GetNews?outputMode=json&start=now-1d&end=now&count=20&apikey=' + module.exports.API_KEY + '&return=enriched.url.url&q.enriched.url.concepts.concept.text=' + topic;
 	  },
 	
 	  getTextURL: function getTextURL(link) {
-	    return 'http://gateway-a.watsonplatform.net/calls/url/URLGetText?apikey=' + module.exports.KEY + '&outputMode=json&url=' + link;
+	    return 'http://gateway-a.watsonplatform.net/calls/url/URLGetText?apikey=' + module.exports.API_KEY + '&outputMode=json&url=' + link;
 	  }
 	};
+
+/***/ },
+/* 13 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var db = __webpack_require__(8);
+	
+	var Article = db.Model.extend({
+	  tableName: 'articles',
+	  hasTimestamps: true,
+	  topic: function topic() {
+	    return this.belongsTo(Topic);
+	  }
+	});
+	
+	module.exports = Article;
+
+/***/ },
+/* 14 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	var db = __webpack_require__(8);
+	
+	var Topic = db.Model.extend({
+	  tableName: 'topics',
+	  hasTimestamps: true,
+	  streams: function streams() {
+	    return this.hasMany(Stream);
+	  },
+	  videos: function videos() {
+	    return this.hasMany(Video);
+	  },
+	  articles: function articles() {
+	    return this.hasMany(Article);
+	  }
+	});
+	
+	module.exports = Topic;
 
 /***/ }
 /******/ ]);

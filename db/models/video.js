@@ -1,6 +1,6 @@
 var db = require('../config');
 
-var Video = bookshelf.Model.extend({
+var Video = db.Model.extend({
   tableName: 'videos',
   user: function() {
     return this.belongsTo(User);
