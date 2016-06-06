@@ -9,3 +9,4 @@ Updating existing deployment:
 3. In db/config.js, comment out local db client and connection, 
    uncomment Heroku Postgres db client and connection.
 4. In PublicPage.js, change references to localhost:300 to your Herkou app's address
+5. Npm run build:client, npm run build:server.
