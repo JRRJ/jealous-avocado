@@ -165,10 +165,10 @@ app.get('/getArticles', (req, res) => {
 
   //get the articles from the db
   var getArticles = function(topicId) {
-    Article.fetchAll({topicId: topicId}).then(function(articles){
+    Article.query({where: {topicId: topicId}}).fetchAll().then(function(articles){
       articles.forEach(function(article){
         //console.log(article.get('url'), article.get('created_at'));
-        allURLS.push({url: article.get('url'), snippet: article.get('snippet'), title: article.get('title')});
+        allURLS.push({url: article.get('url'), snippet: article.get('snippet').substr(0,2999), title: article.get('title')});
       });
       res.json(allURLS);
     });
