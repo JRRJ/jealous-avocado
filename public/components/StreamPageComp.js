@@ -32,7 +32,7 @@ class StreamPageComp extends React.Component {
 
       $('#startStream').hide();
       $('#stopStream').show();
-      window.open('http://localhost:3000');
+      window.open('https://go-rep.herokuapp.com/public');
     };
 
     document.querySelector('#stopStream').onclick = function() {

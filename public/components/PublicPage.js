@@ -55,7 +55,7 @@ class PublicPage extends React.Component {
               {this.props.currentStreamers.map((video) => 
                   <li className="video" onClick={this.updateCurrentVideo}> 
                 <div className="videoWrapper">
-                    <iframe width="142" height="80" src={"http://localhost:3000/" + video} frameBorder="0" allowFullScreen></iframe>        
+                    <iframe width="142" height="80" src={"https://go-rep.herokuapp.com/" + video} frameBorder="0" allowFullScreen></iframe>        
                 </div>
                   {video + " is reporting on " + this.props.user.stream.title}
                   </li>

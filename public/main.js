@@ -29337,7 +29337,7 @@
 	
 	        $('#startStream').hide();
 	        $('#stopStream').show();
-	        window.open('http://localhost:3000');
+	        window.open('https://go-rep.herokuapp.com/public');
 	      };
 	
 	      document.querySelector('#stopStream').onclick = function () {
@@ -29647,7 +29647,7 @@
 	                  React.createElement(
 	                    'div',
 	                    { className: 'videoWrapper' },
-	                    React.createElement('iframe', { width: '142', height: '80', src: "http://localhost:3000/" + video, frameBorder: '0', allowFullScreen: true })
+	                    React.createElement('iframe', { width: '142', height: '80', src: "https://go-rep.herokuapp.com/" + video, frameBorder: '0', allowFullScreen: true })
 	                  ),
 	                  video + " is reporting on " + _this3.props.user.stream.title
 	                );
